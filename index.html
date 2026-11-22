@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#091522">
+<title>Neon City — Downtown Edition</title>
+<style>
+  :root{--bg:#08131f;--ink:#ecf7ff;--muted:#a9c3d4;--aqua:#5af5df;--gold:#ffcb69;--red:#ff6c81}
+  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:500 14px system-ui,-apple-system,"Segoe UI",sans-serif;user-select:none}
+  #scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
+  .glass{background:rgba(5,21,36,.87);border:1px solid rgba(119,232,228,.22);box-shadow:0 8px 34px #0017;backdrop-filter:blur(9px)}
+  #hud{pointer-events:none;position:fixed;inset:0;z-index:3}
+  .top{position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .hudBox{padding:11px 14px;border-radius:13px;min-width:180px}.hudBox.right{text-align:right}
+  .eyebrow{font-size:10px;letter-spacing:2.1px;color:var(--aqua);font-weight:900}.balance{font-size:23px;font-weight:900;line-height:1.4;font-variant-numeric:tabular-nums}.sub{font-size:11px;color:#bfd3e0;line-height:1.45}
+  .stars{font-size:21px;letter-spacing:1px;color:var(--gold);line-height:1.25}
+  .healthbar{margin-top:6px;background:#314353;border-radius:20px;width:142px;height:7px;overflow:hidden;margin-left:auto}.healthbar>i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#ff767d,#5be6aa)}
+  #carHealth{display:none;margin-top:5px;color:#ffc17b}.carBar{display:none;margin:4px 0;background:#203d4b;border:1px solid #537385;border-radius:20px;height:7px;overflow:hidden}.carBar>i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#ff665a,#ffe083,#64f2c9)}
+  #garageInfo{color:#6cf5df;margin-top:5px;font-weight:800}
+  #objective{position:absolute;top:110px;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 370px));min-width:230px;padding:10px 15px;border-radius:12px;text-align:center;font-size:12px;line-height:1.6}
+  #objective b{color:#ffda84}
+  #help{position:absolute;bottom:14px;left:16px;padding:11px 14px;border-radius:12px;font-size:11px;line-height:1.65;color:#c7e2ed;max-width:570px}
+  #help kbd{display:inline-block;font:800 11px system-ui;border-radius:4px;padding:1px 5px;margin:0 2px 0 4px;border:1px solid #507080;background:#183345;color:#fff}
+  #toast{position:absolute;left:50%;bottom:20%;transform:translateX(-50%);background:rgba(2,27,42,.92);border:1px solid #59e7d2;color:#f5ffff;padding:10px 17px;border-radius:11px;max-width:85vw;text-align:center;opacity:0;transition:opacity .2s;pointer-events:none;white-space:pre-line}
+  #toast.visible{opacity:1}
+  #place{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);letter-spacing:3px;font-weight:900;background:rgba(5,21,36,.8);padding:7px 12px;border-radius:7px;display:none}
+  #prompt{position:absolute;bottom:103px;left:50%;transform:translateX(-50%);color:#e5fffd;font-size:12px;padding:7px 12px;border-radius:9px;display:none;white-space:nowrap}
+  .overlay{position:fixed;z-index:10;inset:0;background:rgba(2,10,20,.87);backdrop-filter:blur(13px);display:flex;justify-content:center;align-items:center;padding:18px;overflow:auto}
+  .modal{width:min(685px,100%);background:linear-gradient(145deg,#173a4a,#071a2c);border:1px solid #557d8c;border-radius:22px;padding:clamp(22px,4vw,34px);box-shadow:0 35px 120px #0009;text-align:center}
+  .modal h1{margin:3px 0 12px;font-size:clamp(32px,6vw,50px);letter-spacing:1px;font-weight:1000}.modal h1 span{color:var(--aqua)}.modal p{font-weight:450;line-height:1.6;color:#d2e4ee}
+  .pill{display:inline-block;font-weight:900;letter-spacing:2px;font-size:11px;color:var(--gold)}
+  .modal button{cursor:pointer;border:0;border-radius:11px;background:var(--aqua);font:900 14px system-ui;color:#08232b;padding:13px 22px;margin:9px 5px 0}
+  .modal button.secondary{background:#25445a;color:#e4faff}.modal button:focus-visible,.touchBtn:focus-visible{outline:3px solid #ffdc7a}
+  .keygrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;text-align:left;margin-top:15px}
+  .keyrow{padding:8px 10px;background:#0c293b;border:1px solid #305065;border-radius:9px;font-size:11px;line-height:1.45;color:#cce2ed}
+  .keyrow strong{color:#b8ffee}.hidden{display:none!important}#pauseLayer{display:none}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:17px 0}.stats div{padding:12px;border-radius:11px;background:#0c2a3b}.stats b{display:block;font-size:24px;color:var(--aqua)}.stats small{color:#cce0eb}
+  #touch{display:none;position:fixed;inset:0;z-index:5;pointer-events:none}
+  #joystick{position:absolute;bottom:21px;left:20px;width:120px;height:120px;background:#092b3a9e;border:2px solid #70f0e26b;border-radius:50%;touch-action:none;pointer-events:auto}
+  #thumb{position:absolute;left:35px;top:35px;width:46px;height:46px;border-radius:50%;background:linear-gradient(140deg,#a4fef0,#238ba4);border:3px solid #e5fff7;pointer-events:none}
+  .touchBtn{pointer-events:auto;touch-action:none;position:absolute;border:2px solid #c8f8ef80;border-radius:18px;background:#17506bde;color:white;font:800 11px system-ui;padding:10px 13px;min-width:61px;min-height:45px}
+  #touchPistol{right:17px;bottom:134px}#touchEnter{right:17px;bottom:24px}#touchSpace{right:17px;bottom:79px}#touchAttack{right:102px;bottom:24px}#touchTab{right:102px;bottom:79px}
+  @media(pointer:coarse){#touch{display:block}#help{display:none}#prompt{bottom:150px}#objective{width:min(460px,90vw);top:94px} .top{top:8px;left:8px;right:8px}.hudBox{min-width:0;padding:8px 10px}.balance{font-size:18px}.stars{font-size:17px}.healthbar{width:105px}}
+  @media(max-width:740px){#help{max-width:310px;font-size:10px}#objective{top:95px;width:min(400px,92vw)}.keygrid{grid-template-columns:1fr}.modal{max-height:95vh;overflow:auto}}
+</style>
+</head>
+<body>
+<canvas id="scene" tabindex="0" aria-label="Neon City game"></canvas>
+<div id="hud">
+  <div class="top">
+    <div class="hudBox glass"><div class="eyebrow">NEON CITY / DOWNTOWN</div><div class="balance" id="money">€ 0</div><div class="sub" id="vehicleInfo">Te voet · Vuisten</div><div class="sub" id="radioInfo">Radio: uit</div><div class="sub" id="carHealth">Auto: 100%</div><div class="carBar" id="carBar"><i id="carHealthFill"></i></div><div class="sub" id="garageInfo">GARAGE ◇</div></div>
+    <div class="hudBox glass right"><div class="stars" id="stars">☆☆☆☆☆</div><div class="sub" id="health">Gezondheid 100%</div><div class="healthbar"><i id="healthFill"></i></div><div class="sub" id="district" style="margin-top:6px">CENTRUM</div></div>
+  </div>
+  <div id="objective" class="glass">Missie wordt voorbereid…</div>
+  <div id="toast"></div><div id="place"></div><div id="prompt" class="glass"></div>
+  <div id="help" class="glass"><strong style="color:#6cf5df">LOPEN</strong><kbd>↑↓←→</kbd> Bewegen <kbd>Ctrl</kbd> Actie <kbd>Enter</kbd> Auto <kbd>Spatie</kbd> Springen <kbd>Z</kbd><kbd>X</kbd> Uitrusting <kbd>4</kbd> Pistool <kbd>Tab</kbd> Geluid<br><strong style="color:#6cf5df">RIJDEN</strong><kbd>↑↓</kbd> Gas/rem <kbd>←→</kbd> Sturen <kbd>Spatie</kbd> Handrem <kbd>Tab</kbd> Claxon <kbd>R</kbd> Repareren in garage (€ 100) <kbd>F5</kbd> Radio <kbd>F6</kbd> Pauze <kbd>Esc</kbd> Menu</div>
+</div>
+<div id="touch"><div id="joystick"><div id="thumb"></div></div><button id="touchEnter" class="touchBtn">INSTAP</button><button id="touchSpace" class="touchBtn">SPRING</button><button id="touchPistol" class="touchBtn">PISTOOL</button><button id="touchAttack" class="touchBtn">ACTIE</button><button id="touchTab" class="touchBtn">GELUID</button></div>
+<div id="intro" class="overlay">
+  <div class="modal">
+    <div class="pill">OPEN WERELD · 2D TOP-DOWN · GITHUB PAGES</div>
+    <h1>NEON <span>CITY</span></h1>
+    <p>Verken de stad, stap in auto's, verdien geld en ontkom aan de politie. Botsingen en wapens beschadigen voertuigen. Rijd je auto de turquoise garage in om je sterren kwijt te raken.</p>
+    <div class="keygrid">
+      <div class="keyrow"><strong>TE VOET</strong><br>Pijltjes bewegen · Enter instappen · Spatie springen · linker Ctrl actie · Z/X uitrusting · 4 pistool · Ctrl schieten in je kijkrichting · Tab grappig geluid</div>
+      <div class="keyrow"><strong>IN DE AUTO</strong><br>↑ gas · ↓ achteruit/rem · ←/→ sturen · Enter uitstappen · Spatie handrem · Tab claxon · F5 radio · R repareren (€ 100) wanneer je in de garage staat</div>
+      <div class="keyrow"><strong>EXTRA</strong><br>F6 statistieken/pauze · F7 laatste bericht · F8 30/60 FPS · F9 wijknaam · F10 missie herhalen</div>
+      <div class="keyrow"><strong>SCHERM / MENU</strong><br>F11 schermvullend of resolutie · Escape naar menu · Tab + pijltjes wisselen radioloop tijdens rijden</div>
+    </div>
+    <p style="font-size:12px">Op sommige laptops gebruik je <strong>Fn + F5 t/m F11</strong>. De browser kan bepaalde functietoetsen zelf afhandelen.</p>
+    <button id="startBtn">START SPEL</button><button id="howBtn" class="secondary">TOETSEN TONEN</button>
+  </div>
+</div>
+<div id="pauseLayer" class="overlay">
+  <div class="modal"><div class="pill">NEON CITY · STATISTIEKEN</div><h1>GEPAUZEERD</h1>
+    <div class="stats"><div><b id="statCash">€ 0</b><small>Geld</small></div><div><b id="statJobs">0</b><small>Missies</small></div><div><b id="statWanted">0★</b><small>Politie</small></div></div>
+    <p>F6 om verder te spelen. Je voortgang wordt automatisch lokaal opgeslagen.</p>
+    <button id="resumeBtn">VERDER SPELEN</button><button class="secondary" id="exitBtn">NAAR MENU (ESC)</button><button class="secondary" id="resetBtn">NIEUW SPEL</button>
+  </div>
+</div>
+<script>
+(()=>{'use strict';
+  // Eén bestand, geen externe afbeeldingen, libraries of server nodig.
+  const $=id=>document.getElementById(id);
+  const canvas=$('scene'),ctx=canvas.getContext('2d',{alpha:false});
+  const CELL=320,LANE=44,HALF=LANE+4,COUNT=11,WORLD=CELL*COUNT;
+  const road=n=>n*CELL+CELL/2;
+  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const rand=(a,b)=>a+Math.random()*(b-a),int=n=>Math.floor(Math.random()*n);
+  const len=(x,y)=>Math.hypot(x,y),distance=(a,b)=>len(a.x-b.x,a.y-b.y);
+  const signedAngle=(a,b)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
+  const headings=[{x:1,y:0},{x:0,y:1},{x:-1,y:0},{x:0,y:-1}];
+  const SIDEWALK=63, CAR_LANE=22, STOP_LINE=73;
+  const junctions=Array.from({length:COUNT*COUNT},(_,i)=>({
+    col:i%COUNT,row:Math.floor(i/COUNT),car:null,crossing:0
+  }));
+  const junction=(col,row)=>junctions[row*COUNT+col];
+  function signal(j){
+    const t=(elapsed+j.col*1.7+j.row*2.3)%24;
+    if(t<6)return {green:'h',amber:false};
+    if(t<7)return {green:'h',amber:true};
+    if(t<13)return {green:'v',amber:false};
+    if(t<14)return {green:'v',amber:true};
+    return {green:t<21?'walk':null,amber:false};
+  }
+  const camera={x:0,y:0};
+  let VW=0,VH=0,DPR=1,renderScale=1,elapsed=0,lastFrame=0,loopToken=0,fpsCap=60,playing=false,paused=false,flash=0;
+  const paints=['#ee747b','#63dfd1','#c3a1f5','#ffd07a','#84b7ee','#d5e1ea','#9dc68b','#e6a786'];
+  const carspec=[
+    {name:'Stadsauto',max:166,acc:210,turn:2.45,w:20,l:34},
+    {name:'Sportwagen',max:252,acc:330,turn:3.1,w:19,l:38},
+    {name:'Taxi',max:178,acc:220,turn:2.4,w:21,l:38},
+    {name:'Bestelbus',max:130,acc:155,turn:2.05,w:24,l:49},
+    {name:'Sedan',max:187,acc:235,turn:2.4,w:22,l:40}
+  ];
+  const player={x:road(5),y:road(5),a:0,money:0,hp:100,wanted:0,heat:0,invuln:0,car:null,jump:0,jumpV:0,weapon:0,completed:0,anim:0};
+  const weapons=[{name:'Vuisten',range:28,heat:0},{name:'Schokpuls',range:100,heat:1},{name:'Verfblaster',range:160,heat:1},{name:'Pistool',range:420}];
+  const radioStations=['UIT','NEON BEATS','MIDNIGHT FM','CHIP DRIVE'];
+  const radioNotes=[[0],[220,261.63,329.63,392],[196,246.94,293.66,369.99],[261.63,329.63,392,523.25]];
+  let radio=0,loopOffset=0,audio=null,soundCountdown=0;
+  // Een open garage op het bouwblok ten noordoosten van de startpositie.
+  // De ingang ligt aan de zuidkant: rijd vanaf de straat recht naar binnen.
+  const garage={x:road(5)+HALF+24,y:road(4)+HALF+24,w:CELL-2*HALF-48,h:CELL-2*HALF-38};
+  garage.cx=garage.x+garage.w/2;
+  garage.doorY=garage.y+garage.h;
+  garage.entryHalf=42;
+  garage.walls=[
+    {x:garage.x,y:garage.y,w:garage.w,h:13},
+    {x:garage.x,y:garage.y,w:13,h:garage.h},
+    {x:garage.x+garage.w-13,y:garage.y,w:13,h:garage.h},
+    {x:garage.x,y:garage.doorY-13,w:garage.w/2-garage.entryHalf,h:13},
+    {x:garage.cx+garage.entryHalf,y:garage.doorY-13,w:garage.w/2-garage.entryHalf,h:13}
+  ];
+  function insideGarage(x,y,pad=0){return x>=garage.x+13+pad&&x<=garage.x+garage.w-13-pad&&y>=garage.y+13+pad&&y<=garage.doorY-13-pad}
+  const building=[],trees=[],lamps=[];
+  const R=(x,y)=>({x,y});
+  for(let gy=0;gy<COUNT-1;gy++)for(let gx=0;gx<COUNT-1;gx++){
+    if(gx===5&&gy===4)continue; // hier staat de garage; geen willekeurige gebouwen
+    const x=road(gx)+HALF+22,y=road(gy)+HALF+22;
+    const rx=road(gx+1)-HALF-22,by=road(gy+1)-HALF-22;
+    if((gx*3+gy*5)%9===2){for(let i=0;i<10;i++)trees.push({x:rand(x,rx),y:rand(y,by),r:rand(8,15)});continue}
+    const w=(rx-x-13)/2,h=(by-y-13)/2;
+    const pal=(gx+gy*3)%5;
+    if((gx+gy)%7===0)building.push({x,y,w:rx-x,h:by-y,c:pal});
+    else for(let iy=0;iy<2;iy++)for(let ix=0;ix<2;ix++)if((gx*11+gy*7+ix+iy)%13!==0)
+      building.push({x:x+ix*(w+13),y:y+iy*(h+13),w,h,c:(pal+ix+iy)%5});
+  }
+  for(let gy=0;gy<COUNT;gy++)for(let gx=0;gx<COUNT;gx++)lamps.push({x:road(gx)+58,y:road(gy)+58});
+  function buildingBlock(x,y,r=0){
+    for(const b of building)if(x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h)return true;
+    for(const b of garage.walls)if(x+r>b.x&&x-r<b.x+b.w&&y+r>b.y&&y-r<b.y+b.h)return true;
+    return false;
+  }
+  function allowed(x,y,r=7){return x>r&&y>r&&x<WORLD-r&&y<WORLD-r&&!buildingBlock(x,y,r)}
+  function placeOnRoad(){let vertical=Math.random()<.5;let n=int(COUNT),t=rand(70,WORLD-70);return vertical?R(road(n)+(Math.random()<.5?-18:18),t):R(t,road(n)+(Math.random()<.5?-18:18))}
+  const traffic=[],pedestrians=[],pickups=[],lawCars=[],effects=[],shots=[];
+  function spawnCar(type=int(carspec.length),law=false,near=null){
+    const heading=int(4),d=headings[heading],horizontal=d.x!==0;
+    const line=near?clamp(Math.round(((horizontal?near.y:near.x)-CELL/2)/CELL),0,COUNT-1):int(COUNT);
+    const segment=near?clamp(Math.floor(((horizontal?near.x:near.y)-CELL/2)/CELL)+(Math.random()<.5?-1:1),0,COUNT-2):int(COUNT-1);
+    const along=road(segment)+rand(104,CELL-104);
+    const next=segment+(d.x+d.y>0?1:0);
+    return {
+      x:horizontal?along:road(line)-d.y*CAR_LANE,
+      y:horizontal?road(line)+d.x*CAR_LANE:along,
+      a:heading*Math.PI/2,heading,next:junction(horizontal?next:line,horizontal?line:next),
+      entered:null,exitHeading:heading,turned:false,type,
+      color:law?'#f1f6fb':paints[int(paints.length)],speed:0,occupied:false,ai:true,law,brake:false,
+      hp:100,maxHp:100,destroyed:false,bumpWait:0,smokeTime:0,garageVisited:false
+    };
+  }
+  function walker(){
+    const vertical=Math.random()<.5,index=int(COUNT),dir=Math.random()<.5?-1:1;
+    const offset=(vertical?-dir:dir)*SIDEWALK;
+    const along=road(int(COUNT-1))+rand(SIDEWALK+9,CELL-SIDEWALK-9);
+    return {x:vertical?road(index)+offset:along,y:vertical?along:road(index)+offset,
+      axis:vertical?'v':'h',index,dir,side:offset,crossing:null,speed:rand(28,47),
+      coat:paints[int(paints.length)],skin:['#f4d3ad','#b98765','#d7a37e','#a76c55'][int(4)],
+      phase:rand(0,10),panic:0,stunned:0};
+  }
+  function initWorld(){traffic.length=pedestrians.length=pickups.length=lawCars.length=effects.length=shots.length=0;
+    for(const j of junctions){j.car=null;j.crossing=0}
+    for(let i=0;i<40;i++){
+      const c=spawnCar(i%carspec.length);
+      if(traffic.some(other=>distance(c,other)<58)){i--;continue}
+      traffic.push(c);
+    }
+    for(let i=0;i<90;i++)pedestrians.push(walker());
+    for(let i=0;i<26;i++){let p=placeOnRoad();if(Math.abs(p.x-garage.cx)<110&&Math.abs(p.y-garage.doorY)<170){i--;continue}pickups.push({...p,value:25+25*int(5),active:true})}
+    // Parked cars near the start guarantee Enter can be tried immediately.
+    for(let i=0;i<4;i++){let c=spawnCar(i);c.x=player.x+30;c.y=player.y+20+i*56;c.a=0;c.ai=false;c.speed=0;traffic.push(c)}
+  }
+  const jobs=[
+    {name:'Eerste bezorging',desc:'Rijd naar het gele afleverpunt.',type:'delivery',reward:250},
+    {name:'Drie haltes',desc:'Passeer drie controlepunten met een auto.',type:'checkpoints',reward:425},
+    {name:'Snelle rit',desc:'Bereik de bestemming voordat de tijd om is.',type:'timed',reward:550},
+    {name:'Ontkom aan de politie',desc:'Verlies je sterren en ga naar de veilige zone.',type:'escape',reward:700},
+    {name:'Stadskoerier',desc:'Bezorg het pakket aan de andere kant van de stad.',type:'delivery',reward:900}
+  ];
+  let job=null,nextJob=0,toastTimer=0,lastMessage='Welkom in Neon City.',lastMissionText='';
+  const saveKey='neon-city-downtown-v1';
+  function save(){try{localStorage.setItem(saveKey,JSON.stringify({money:player.money,hp:player.hp,completed:player.completed,x:player.x,y:player.y}))}catch(e){}}
+  function load(){try{const v=JSON.parse(localStorage.getItem(saveKey));if(v){player.money=Math.max(0,Number(v.money)||0);player.hp=clamp(Number(v.hp)||100,1,100);player.completed=Math.max(0,Number(v.completed)||0);if(allowed(v.x,v.y,9)){player.x=v.x;player.y=v.y}}}catch(e){}}
+  function toast(msg,seconds=2.7){lastMessage=String(msg);$('toast').textContent=lastMessage;$('toast').classList.add('visible');toastTimer=seconds}
+  function messageRepeat(){toast(lastMessage,3)}
+  function target(min=640){for(let i=0;i<70;i++){let p=placeOnRoad();if(distance(p,player)>min)return p}return placeOnRoad()}
+  function wanted(n){player.wanted=clamp(Math.max(n,player.wanted),0,5);player.heat=Math.max(player.heat,15+player.wanted*7)}
+  function clearPoliceAtGarage(){
+    player.wanted=0;player.heat=0;policeSpawn=3;
+    for(const c of lawCars){releaseJunction(c);const i=traffic.indexOf(c);if(i>=0)traffic.splice(i,1)}
+    lawCars.length=0;
+    toast('VEILIGE GARAGE · Politie kwijt! Rij gerust weer naar buiten.',4);
+    save();
+  }
+  function updateGarage(){
+    if(!player.car)return;
+    const c=player.car,inside=insideGarage(c.x,c.y,Math.max(carspec[c.type].w*.45,6));
+    if(inside&&!c.garageVisited){
+      c.garageVisited=true;
+      if(player.wanted>0)clearPoliceAtGarage();
+      else toast('Welkom in de garage. Druk op R om te repareren (€ 100).',3.4);
+    }
+    if(!inside)c.garageVisited=false;
+  }
+  function repairCar(){
+    const c=player.car;
+    if(!c||!insideGarage(c.x,c.y,8)){toast('Rijd eerst met je auto de garage binnen.');return}
+    if(c.hp>=c.maxHp){toast('Je auto is al volledig gerepareerd.');return}
+    if(player.money<100){toast('Reparatie kost € 100. Je hebt te weinig geld.');return}
+    player.money-=100;c.hp=c.maxHp;c.destroyed=false;c.bumpWait=0;
+    effect(c.x,c.y,'#6cf5df',16);beep(620,.14,.05);toast('AUTO GEREPAREERD · - € 100',3);save();
+  }
+  function damageCar(c,amount,source='botsing',criminal=false){
+    if(!c||c.destroyed||amount<=0)return false;
+    const was=c.hp;
+    c.hp=clamp(c.hp-amount,0,c.maxHp);
+    effect(c.x+rand(-8,8),c.y+rand(-8,8),source==='kogel'?'#ffdb82':'#ff967a',clamp(amount*.55,6,19));
+    if(criminal&&c.law)wanted(3);
+    else if(criminal)wanted(Math.max(player.wanted,source==='kogel'?2:1));
+    if(c.hp<=0&&was>0){
+      c.hp=0;c.destroyed=true;c.speed=0;c.ai=false;releaseJunction(c);
+      if(c.occupied){toast('AUTO TOTAL LOSS! Druk op Enter om uit te stappen.',4);flash=.35}
+      else toast(c.law?'Politieauto buiten werking!':'Auto onbruikbaar!',2.3);
+      beep(95,.28,.08,'sawtooth');
+    }else if(c.occupied&&c.hp<40&&c.hp+amount>=40){toast('WAARSCHUWING · Motor zwaar beschadigd!',2.7)}
+    return true;
+  }
+  function createJob(){const def=jobs[player.completed%jobs.length];job={...def,stage:0,goal:target(def.type==='delivery'?850:640),time:def.type==='timed'?90:Infinity};if(def.type==='escape')wanted(2);toast('NIEUWE MISSIE: '+def.name,4);lastMissionText=def.desc;}
+  function finishJob(){player.money+=job.reward;player.completed++;toast('MISSIE VOLTOOID! + € '+job.reward,4);job=null;nextJob=3;save()}
+  function tickJob(dt){if(!job){nextJob-=dt;if(nextJob<=0)createJob();return}
+    if(job.type==='timed'){job.time-=dt;if(job.time<=0){toast('Tijd om. Nieuwe poging.');job=null;nextJob=3;return}}
+    if(distance(player,job.goal)<59){if(job.type==='checkpoints'&&job.stage<2){job.stage++;job.goal=target(500);toast('CONTROLEPUNT '+job.stage+'/3')}
+      else if(job.type==='escape'&&player.wanted>0){toast('Verlies eerst de politie!');job.goal=target(390)}
+      else if(!player.car&&job.type!=='escape'){toast('Stap in een auto om af te leveren.')}else finishJob()}}
+  const keys=new Set(),joy={x:0,y:0},touchPress={space:false,attack:false,tab:false};
+  function axis(){let x=joy.x,y=joy.y;if(keys.has('ArrowLeft')||keys.has('KeyA'))x--;if(keys.has('ArrowRight')||keys.has('KeyD'))x++;if(keys.has('ArrowUp')||keys.has('KeyW'))y--;if(keys.has('ArrowDown')||keys.has('KeyS'))y++;return {x:clamp(x,-1,1),y:clamp(y,-1,1)}}
+  function placeName(){let names=['Havenkwartier','Noordzijde','Parkwijk','Oude Stad','Binnenstad','Neon District','Stationsplein','Zuidpoort','Industriehaven'];let gx=Math.floor(player.x/WORLD*3),gy=Math.floor(player.y/WORLD*3);return names[clamp(gy,0,2)*3+clamp(gx,0,2)]}
+  function updatePlace(){const n=placeName();$('district').textContent=n.toUpperCase();$('place').textContent=n.toUpperCase();}
+  function doJump(){if(player.car||player.jump>0)return;player.jumpV=320;player.jump=.01;effect(player.x,player.y,'#c1fbea',5)}
+  function effect(x,y,color,size=8){effects.push({x,y,color,size,life:.5})}
+  function startAudio(){if(!audio){try{audio=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(audio&&audio.state==='suspended')audio.resume().catch(()=>{})}
+  function beep(freq,duration=.09,vol=.035,mode='triangle'){if(!audio)return;try{const o=audio.createOscillator(),g=audio.createGain(),n=audio.currentTime;o.type=mode;o.frequency.setValueAtTime(freq,n);g.gain.setValueAtTime(vol,n);g.gain.exponentialRampToValueAtTime(.0001,n+duration);o.connect(g);g.connect(audio.destination);o.start(n);o.stop(n+duration+.01)}catch(e){}}
+  function switchRadio(dir=1){radio=(radio+dir+radioStations.length)%radioStations.length;startAudio();toast('RADIO: '+radioStations[radio]);$('radioInfo').textContent='Radio: '+radioStations[radio]}
+  function horn(){effect(player.x,player.y,'#ffe59e',10);if(player.car){beep(285,.14,.075,'sawtooth');beep(370,.12,.025,'sine');for(const p of pedestrians)if(distance(p,player)<145)p.panic=2.5;toast(player.car.law?'SIRENE!':'TOET TOET!',1)}else{beep(105,.12,.038,'sawtooth');toast(['*BUURP!*','*PRRRRT!*','*BLOEP!*'][int(3)],1.4)}}
+  function interaction(){if(!playing||paused)return;
+    if(player.car){const c=player.car;for(const sign of [1,-1]){const x=c.x+Math.sin(c.a)*sign*33,y=c.y-Math.cos(c.a)*sign*33;if(allowed(x,y,10)){player.x=x;player.y=y;player.car=null;c.occupied=false;c.ai=false;c.speed*=.15;toast('Uitgestapt');return}}toast('Hier kun je niet uitstappen');return}
+    let closest=null,best=56;for(const c of traffic){const d=distance(c,player);if(!c.occupied&&!c.destroyed&&d<best){closest=c;best=d}}
+    if(!closest){toast('Loop dichter naar een auto en druk op Enter');return}
+    releaseJunction(closest);closest.occupied=true;closest.ai=false;player.car=closest;player.x=closest.x;player.y=closest.y;
+    if(closest.law)wanted(3);else if(Math.random()<.25)wanted(1);
+    toast('Ingestapt: '+carspec[closest.type].name);updateGarage();}
+  let attackCD=0;
+  function attack(){if(!playing||paused||attackCD>0)return;attackCD=.36;startAudio();
+    if(player.car){effect(player.x,player.y,'#ffbf61',12);beep(300,.09);const front={x:player.x+Math.cos(player.car.a)*40,y:player.y+Math.sin(player.car.a)*40};for(const c of traffic)if(c!==player.car&&distance(c,front)<55){c.speed*=.45;damageCar(c,9,'rammen',true)}return}
+    const w=weapons[player.weapon];
+    if(w.name==='Pistool'){firePistol(w.range);return}
+    effect(player.x+Math.cos(player.a)*w.range*.7,player.y+Math.sin(player.a)*w.range*.7,player.weapon===2?'#ffc65a':'#5cf7e6',player.weapon===0?10:19);
+    beep(player.weapon===0?180:650+player.weapon*130,.08,.045);
+    let found=false;
+    for(const c of traffic){
+      if(c.destroyed)continue;
+      const d=distance(c,player),angle=Math.atan2(c.y-player.y,c.x-player.x);
+      const radius=Math.max(carspec[c.type].w*.55,10);
+      if(d<w.range+radius&&Math.abs(signedAngle(player.a,angle))<1.05){
+        if(damageCar(c,[7,19,12][player.weapon],'wapen',true))found=true;
+      }
+    }
+    for(const p of pedestrians){if(p.stunned>0)continue;let d=distance(p,player);let angle=Math.atan2(p.y-player.y,p.x-player.x);
+      if(d<w.range&&Math.abs(signedAngle(player.a,angle))<1.05){p.stunned=.45;p.panic=5;found=true;effect(p.x,p.y,'#ffc571',12)}}
+    if(found){wanted(Math.max(1,w.heat+1));toast('Pas op! De politie is gewaarschuwd.')}else if(player.weapon>0)wanted(1);
+  }
+  function firePistol(range){
+    const dx=Math.cos(player.a),dy=Math.sin(player.a);
+    let end=range,hit=null,hitCar=null;
+    for(let t=4;t<=end;t+=4){
+      if(!allowed(player.x+dx*t,player.y+dy*t)){end=t;break}
+    }
+    for(const p of pedestrians){
+      const x=p.x-player.x,y=p.y-player.y,along=x*dx+y*dy;
+      const across=Math.abs(x*dy-y*dx);
+      if(along<=0||across>=9)continue;
+      const contact=Math.max(0,along-Math.sqrt(81-across*across));
+      if(contact<end){end=contact;hit=p}
+    }
+    for(const c of traffic){
+      if(c.destroyed)continue;
+      const x=c.x-player.x,y=c.y-player.y,along=x*dx+y*dy;
+      const across=Math.abs(x*dy-y*dx),radius=Math.max(12,carspec[c.type].w*.65);
+      if(along<=0||across>=radius)continue;
+      const contact=Math.max(0,along-Math.sqrt(radius*radius-across*across));
+      if(contact<end){end=contact;hitCar=c;hit=null}
+    }
+    shots.push({x:player.x+dx*Math.min(12,end),y:player.y+dy*Math.min(12,end),
+      endX:player.x+dx*end,endY:player.y+dy*end,life:.12});
+    if(hitCar)damageCar(hitCar,31,'kogel',true);
+    else if(hit){hit.stunned=1.4;hit.panic=5;effect(hit.x,hit.y,'#ffc571',9)}
+    for(const p of pedestrians)if(distance(p,player)<190)p.panic=5;
+    beep(145,.1,.1,'sawtooth');
+    wanted(hit||hitCar?2:1);
+  }
+  function selectPistol(){
+    if(player.car)return;
+    player.weapon=weapons.length-1;
+    toast('UITRUSTING: Pistool',1.7);
+  }
+  function cycleWeapon(dir){if(player.car)return;player.weapon=(player.weapon+dir+weapons.length)%weapons.length;toast('UITRUSTING: '+weapons[player.weapon].name,1.7)}
+  function stats(){ $('statCash').textContent='€ '+Math.floor(player.money);$('statJobs').textContent=String(player.completed);$('statWanted').textContent=player.wanted+'★' }
+  function pauseGame(force){if(!playing)return;paused=force===undefined?!paused:force;stats();$('pauseLayer').style.display=paused?'flex':'none';if(!paused){lastFrame=performance.now();schedule()}else save()}
+  function quitToMenu(){if(!playing)return;playing=false;paused=false;save();loopToken++;keys.clear();$('pauseLayer').style.display='none';$('intro').classList.remove('hidden');$('startBtn').textContent='VERDER SPELEN';}
+  function toggleResolution(){renderScale=renderScale===1?.75:renderScale===.75?1.25:1;resize();toast('WEERGAVE: '+Math.round(renderScale*100)+'%'+(document.fullscreenElement?' · Volledig scherm':''));
+    if(!document.fullscreenElement&&document.documentElement.requestFullscreen){document.documentElement.requestFullscreen().catch(()=>{})}}
+  const reserved=new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Tab','Enter','ControlLeft','ControlRight','F5','F6','F7','F8','F9','F10','F11','Escape']);
+  window.addEventListener('keydown',e=>{
+    if(playing&&reserved.has(e.code))e.preventDefault();
+    if(!playing)return;
+    if(e.repeat)return;
+    const first=!keys.has(e.code);keys.add(e.code);if(!first)return;
+    if(e.code==='F6'){pauseGame();return}
+    if(e.code==='Escape'){quitToMenu();return}
+    if(paused)return;
+    switch(e.code){
+      case 'Enter':case 'KeyE':interaction();break;
+      case 'Space':if(!player.car)doJump();break;
+      case 'ControlLeft':case 'ControlRight':attack();break;
+      case 'Digit4':selectPistol();break;
+      case 'KeyR':repairCar();break;
+      case 'KeyZ':cycleWeapon(-1);break;
+      case 'KeyX':cycleWeapon(1);break;
+      case 'Tab':if(!player.car||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].some(k=>keys.has(k)))horn();break;
+      case 'F5':switchRadio();break;
+      case 'F7':messageRepeat();break;
+      case 'F8':fpsCap=fpsCap===60?30:60;toast('Framelimiet: '+fpsCap+' FPS');break;
+      case 'F9':$('place').style.display=$('place').style.display==='block'?'none':'block';updatePlace();break;
+      case 'F10':toast(job?job.name+' — '+job.desc:lastMissionText||'Nog geen missie',4);break;
+      case 'F11':toggleResolution();break;
+    }
+  });
+  window.addEventListener('keyup',e=>keys.delete(e.code));
+  window.addEventListener('blur',()=>{keys.clear();joy.x=joy.y=0;if(playing&&!paused)pauseGame(true)});
+  function move(body,nx,ny,r,crash=false){let collided=false;if(allowed(nx,body.y,r))body.x=nx;else collided=true;if(allowed(body.x,ny,r))body.y=ny;else collided=true;return crashed(collided,crash)}
+  function crashed(hit,crash){if(hit&&crash&&player.invuln<=0){player.hp=Math.max(0,player.hp-3);player.invuln=.7;flash=.35;effect(player.x,player.y,'#ff9c6a');if(player.hp<=0)hospital()}return hit}
+  function hospital(){player.hp=100;player.money=Math.max(0,player.money-175);player.wanted=0;player.heat=0;if(player.car){player.car.occupied=false;player.car=null}player.x=road(5);player.y=road(5);player.invuln=2;for(const c of lawCars){releaseJunction(c);let i=traffic.indexOf(c);if(i>=0)traffic.splice(i,1)}lawCars.length=0;toast('ZIEKENHUIS · € 175 kosten',4);save()}
+  function drive(dt,axis){const c=player.car,spec=carspec[c.type],gas=-axis.y;
+    if(c.destroyed){c.speed=0;c.brake=true;player.x=c.x;player.y=c.y;player.a=c.a;return}
+    const brake=keys.has('Space')||touchPress.space;c.brake=brake;
+    c.speed+=gas*spec.acc*dt;c.speed*=Math.pow(gas===0?.972:.995,dt*60);
+    if(brake)c.speed*=Math.pow(.945,dt*60);
+    const condition=.32+.68*(c.hp/c.maxHp);
+    c.speed=clamp(c.speed,-spec.max*.46*condition,spec.max*condition);
+    if(Math.abs(c.speed)>7)c.a+=axis.x*spec.turn*dt*Math.sign(c.speed)*clamp(Math.abs(c.speed)/85,.3,1)*(brake?1.6:1);
+    let nx=c.x+Math.cos(c.a)*c.speed*dt,ny=c.y+Math.sin(c.a)*c.speed*dt;
+    const impact=Math.abs(c.speed);
+    if(move(c,nx,ny,Math.max(spec.w*.66,12),false)){
+      if(c.bumpWait<=0&&impact>22){damageCar(c,clamp(impact*.12,4,27),'botsing');c.bumpWait=.55;
+        if(player.invuln<=0){player.hp=Math.max(0,player.hp-clamp(impact*.025,1,5));player.invuln=.6;flash=.24;if(player.hp<=0){hospital();return}}}
+      c.speed*=-.18;
+    }
+    if(player.car!==c)return;
+    player.x=c.x;player.y=c.y;player.a=c.a;
+    for(const other of traffic){
+      if(other===c)continue;
+      const min=(spec.w+carspec[other.type].w)*.67+5;
+      if(distance(c,other)<min){
+        const severity=Math.abs(c.speed-other.speed);
+        if(c.bumpWait<=0&&severity>10){
+          damageCar(c,clamp(4+severity*.13,5,28),'botsing');
+          damageCar(other,clamp(3+severity*.10,4,23),'botsing',false);
+          c.bumpWait=.6;other.bumpWait=.5;
+          if(other.law)wanted(2);
+          if(player.invuln<=0){player.hp=Math.max(0,player.hp-clamp(severity*.03,2,7));player.invuln=.9;flash=.25;if(player.hp<=0){hospital();return}}
+        }
+        c.speed*=-.28;other.speed*=.4;
+      }
+    }
+  }
+  function releaseJunction(c){
+    if(c.entered){c.entered.car=null;c.entered=null}
+  }
+  function chooseExit(c,j){
+    const options=[c.heading,(c.heading+1)%4,(c.heading+3)%4].filter(heading=>{
+      const d=headings[heading],col=j.col+d.x,row=j.row+d.y;
+      return col>=0&&row>=0&&col<COUNT&&row<COUNT;
+    });
+    if(c.law){
+      return options.reduce((best,heading)=>{
+        const score=h=>headings[h].x*(player.x-road(j.col))+headings[h].y*(player.y-road(j.row));
+        return score(heading)>score(best)?heading:best;
+      });
+    }
+    return options.includes(c.heading)&&Math.random()<.7?c.heading:options[int(options.length)];
+  }
+  function updateTraffic(dt){
+    for(const c of traffic){
+      c.bumpWait=Math.max(0,c.bumpWait-dt);
+      if(c.destroyed||!c.ai||c.occupied)continue;
+      const j=c.next,x=road(j.col),y=road(j.row);
+      let d=headings[c.heading],progress=(c.x-x)*d.x+(c.y-y)*d.y;
+      const velocity=c.law?110+player.wanted*12:54+(c.type===1?30:0);
+      let step=velocity*dt;
+      for(const other of traffic){
+        if(other===c||(other.ai&&other.heading!==c.heading)||(!other.ai&&other.destroyed===false&&other.occupied===false)||other===player.car)continue;
+        const ox=other.x-c.x,oy=other.y-c.y;
+        const ahead=ox*d.x+oy*d.y;
+        if(ahead<=0||Math.abs(ox*d.y-oy*d.x)>2)continue;
+        const gap=(carspec[c.type].l+carspec[other.type].l)/2+8;
+        step=Math.min(step,Math.max(0,ahead-gap));
+      }
+      if(!c.entered){
+        const stop=STOP_LINE+carspec[c.type].l/2;
+        const s=signal(j);
+        if(step>0&&progress+step>=-stop&&s.green===(d.x?'h':'v')&&!s.amber&&!j.car&&!j.crossing){
+          c.entered=j;j.car=c;c.exitHeading=chooseExit(c,j);c.turned=c.heading===c.exitHeading;
+        }else{
+          step=Math.min(step,Math.max(0,-stop-progress));
+        }
+      }
+      if(c.entered&&!c.turned){
+        const exit=headings[c.exitHeading];
+        const corner=-exit.y*d.x*CAR_LANE+exit.x*d.y*CAR_LANE;
+        if(progress+step>=corner){
+          const toCorner=Math.max(0,corner-progress);
+          c.x+=d.x*toCorner;c.y+=d.y*toCorner;step-=toCorner;
+          c.heading=c.exitHeading;c.a=c.heading*Math.PI/2;d=exit;c.turned=true;
+          // Check the receiving lane on the next tick before advancing.
+          step=0;
+        }
+      }
+      c.x+=d.x*step;c.y+=d.y*step;
+      c.speed=step/dt;c.brake=step<velocity*dt*.75;
+      progress=(c.x-x)*d.x+(c.y-y)*d.y;
+      if(c.entered&&c.turned&&progress>=STOP_LINE+carspec[c.type].l/2){
+        releaseJunction(c);
+        c.next=junction(j.col+d.x,j.row+d.y);
+      }
+    }
+  }
+  function updatePedestrians(dt){
+    for(const p of pedestrians){
+      p.stunned=Math.max(0,p.stunned-dt);p.panic=Math.max(0,p.panic-dt);
+      if(p.stunned>0&&!p.crossing)continue;
+      const axis=p.axis==='h'?'x':'y';
+      const edge=road(p.dir>0?COUNT-1:0)+p.dir*SIDEWALK;
+      if(!p.crossing&&p.dir*(p[axis]-edge)>=0){
+        // Follow the outside corner onto the perpendicular sidewalk.
+        const nextDir=p.side>0?-1:1;
+        p.index=p.dir>0?COUNT-1:0;
+        p.axis=p.axis==='h'?'v':'h';
+        p.dir=nextDir;
+        p.side=(p.axis==='v'?p.x:p.y)-road(p.index);
+        continue;
+      }
+      let step=p.speed*dt*(p.panic>0?2:1);
+      if(!p.crossing){
+        const index=p.dir>0?Math.ceil((p[axis]+HALF-CELL/2-1e-6)/CELL):Math.floor((p[axis]-HALF-CELL/2+1e-6)/CELL);
+        if(index>=0&&index<COUNT){
+          const j=p.axis==='h'?junction(index,p.index):junction(p.index,index);
+          const remaining=(road(index)-p[axis])*p.dir-HALF;
+          if(step>=remaining){
+            if(signal(j).green==='walk'&&!j.car){
+              p.crossing={junction:j,end:road(index)+p.dir*HALF};
+              j.crossing++;
+            }else step=Math.max(0,remaining);
+          }
+        }
+      }
+      if(p.crossing){
+        const remaining=(p.crossing.end-p[axis])*p.dir;
+        if(step>=remaining){
+          p.crossing.junction.crossing--;
+          p.crossing=null;
+        }
+      }
+      const next=p[axis]+p.dir*step;
+      p[axis]=p.dir>0?Math.min(next,edge):Math.max(next,edge);
+      if(step>0)p.phase+=dt*(p.panic>0?15:8);
+      if(player.car&&distance(p,player)<27&&Math.abs(player.car.speed)>45){
+        p.panic=4;p.stunned=.45;wanted(2);effect(p.x,p.y,'#ffd088');
+        if(player.invuln<=0){player.hp=Math.max(0,player.hp-2);player.invuln=.5}
+      }
+    }
+  }
+  let policeSpawn=2;
+  function updatePolice(dt){if(player.wanted<=0){player.heat=0;for(const c of lawCars){releaseJunction(c);let i=traffic.indexOf(c);if(i>=0)traffic.splice(i,1)}lawCars.length=0;return}
+    policeSpawn-=dt;
+    if(policeSpawn<=0&&lawCars.length<Math.min(2+player.wanted,6)){
+      const c=spawnCar(4,true,player);
+      if(traffic.every(other=>distance(c,other)>=58)){
+        lawCars.push(c);traffic.push(c);policeSpawn=4.2;
+      }else policeSpawn=.3;
+    }
+    let nearby=false;
+    for(const c of lawCars){if(c.occupied||c.destroyed)continue;
+      const d=distance(c,player);if(d<335)nearby=true;
+      if(d<29&&player.invuln<=0){player.hp=Math.max(0,player.hp-9);player.invuln=1.5;flash=.4;effect(player.x,player.y,'#f07ca0');toast('POLITIE! -9 gezondheid',1.6);if(player.hp<=0)hospital()}
+    }
+    if(!nearby){player.heat-=dt;if(player.heat<=0){player.wanted--;player.heat=12;toast(player.wanted?'Gezocht-niveau daalt':'Je bent de politie kwijt!')}}else player.heat=Math.max(player.heat,5);
+  }
+  function updateAudio(dt){if(!player.car||radio===0){soundCountdown=.3;return}soundCountdown-=dt;if(soundCountdown>0)return;
+    soundCountdown=.34;const list=radioNotes[radio],idx=Math.floor(elapsed/.34)+loopOffset;beep(list[((idx%list.length)+list.length)%list.length],.16,.014,radio===3?'square':'sine');}
+  let saveCountdown=9;
+  function update(dt){elapsed+=dt;attackCD=Math.max(0,attackCD-dt);player.invuln=Math.max(0,player.invuln-dt);flash=Math.max(0,flash-dt);
+    if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').classList.remove('visible')}
+    const control=axis();
+    if(player.car){drive(dt,control);updateGarage()}else{
+      const magnitude=len(control.x,control.y),m=Math.max(1,magnitude),dx=control.x/m,dy=control.y/m;
+      if(magnitude>0.15){const speed=keys.has('ShiftLeft')||keys.has('ShiftRight')?192:135;
+        move(player,player.x+dx*speed*dt,player.y+dy*speed*dt,9);player.a=Math.atan2(dy,dx);player.anim+=dt*10}
+      if(player.jump>0){player.jumpV-=870*dt;player.jump+=player.jumpV*dt;if(player.jump<=0){player.jump=0;player.jumpV=0}}
+    }
+    if(keys.has('Tab')&&player.car&&(keys.has('ArrowLeft')||keys.has('ArrowRight'))){
+      // De radioloop beweegt per pijltoets in combinatie met Tab; los Tab is claxon.
+      if(!lastTabMix||elapsed-lastTabMix>.28){loopOffset+=keys.has('ArrowRight')?1:-1;lastTabMix=elapsed;$('radioInfo').textContent='Radio: '+radioStations[radio]+' · loop '+(Math.abs(loopOffset)%8+1)}
+    }
+    if(keys.has('ControlLeft')||keys.has('ControlRight')||touchPress.attack)attack();
+    updateTraffic(dt);updatePedestrians(dt);updatePolice(dt);tickJob(dt);updateAudio(dt);
+    for(const p of pickups)if(p.active&&distance(p,player)<22){p.active=false;player.money+=p.value;toast('+ € '+p.value+' op straat gevonden')}
+    for(let i=effects.length-1;i>=0;i--){effects[i].life-=dt;if(effects[i].life<=0)effects.splice(i,1)}
+    for(let i=shots.length-1;i>=0;i--){shots[i].life-=dt;if(shots[i].life<=0)shots.splice(i,1)}
+    saveCountdown-=dt;if(saveCountdown<=0){save();saveCountdown=9}
+    updateHUD();
+  }
+  let lastTabMix=0;
+  function updateHUD(){ $('money').textContent='€ '+Math.floor(player.money).toLocaleString('nl-NL');$('stars').textContent='★'.repeat(player.wanted)+'☆'.repeat(5-player.wanted);
+    $('health').textContent='Gezondheid '+Math.ceil(player.hp)+'%';$('healthFill').style.width=clamp(player.hp,0,100)+'%';
+    $('touchAttack').textContent=!player.car&&player.weapon===weapons.length-1?'SCHIET':'ACTIE';
+    $('vehicleInfo').textContent=player.car?carspec[player.car.type].name+' · '+Math.round(Math.abs(player.car.speed)*.43)+' km/u'+(player.car.destroyed?' · TOTAL LOSS':''):'Te voet · '+weapons[player.weapon].name;
+    $('carHealth').style.display=$('carBar').style.display=player.car?'block':'none';
+    if(player.car){const condition=Math.round(player.car.hp/player.car.maxHp*100);$('carHealth').textContent='Autoschade: '+(100-condition)+'% · Conditie '+condition+'%';$('carHealthFill').style.width=condition+'%'}
+    $('garageInfo').textContent=player.car&&insideGarage(player.car.x,player.car.y,7)?'GARAGE ✓ Veilig · R = repareren': 'GARAGE ◇ '+Math.round(distance(player,{x:garage.cx,y:garage.doorY})/10)+' m';
+    updatePlace();
+    $('objective').innerHTML=job?'<b>'+job.name+'</b> · '+job.desc+(job.type==='checkpoints'?' ('+(job.stage+1)+'/3)':'')+(job.type==='timed'?' · '+Math.max(0,Math.ceil(job.time))+'s':'')+'<br>Beloning: € '+job.reward:'Nieuwe missie onderweg…';
+    let car=null,best=58;if(!player.car)for(const c of traffic){const d=distance(c,player);if(!c.occupied&&d<best){car=c;best=d}}
+    $('prompt').style.display=car?'block':(player.car&&insideGarage(player.x,player.y,8)?'block':'none');
+    if(car)$('prompt').textContent='ENTER · Instappen in '+carspec[car.type].name;
+    else if(player.car&&insideGarage(player.x,player.y,8))$('prompt').textContent='GARAGE · R = volledige reparatie voor € 100';
+    $('touchEnter').textContent=player.car?'UITSTAP':'INSTAP';$('touchSpace').textContent=player.car?'HANDREM':'SPRING';$('touchTab').textContent=player.car?'CLAXON':'GELUID';
+  }
+  function resize(){VW=innerWidth;VH=innerHeight;DPR=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(VW*DPR*renderScale);canvas.height=Math.round(VH*DPR*renderScale);ctx.setTransform(DPR*renderScale,0,0,DPR*renderScale,0,0);ctx.imageSmoothingEnabled=true}
+  addEventListener('resize',resize);resize();
+  const round=(x,y,w,h,r=4)=>{ctx.beginPath();ctx.roundRect(x,y,w,h,r)};
+  function visible(x,y,pad=180){return Math.abs(x-camera.x)<VW/2+pad&&Math.abs(y-camera.y)<VH/2+pad}
+  function drawBuildings(){
+    const roofs=['#4c7b8b','#647a92','#8b8076','#5f9387','#8c82a1'];
+    for(const b of building){if(!visible(b.x+b.w/2,b.y+b.h/2,180))continue;
+      ctx.fillStyle='#183641';round(b.x+8,b.y+10,b.w,b.h,5);ctx.fill();ctx.fillStyle=roofs[b.c];round(b.x,b.y,b.w,b.h,5);ctx.fill();
+      ctx.fillStyle='rgba(0,18,28,.24)';ctx.fillRect(b.x+7,b.y+9,b.w-14,13);
+      ctx.fillStyle='rgba(194,248,242,.3)';for(let ix=b.x+16;ix<b.x+b.w-14;ix+=25)for(let iy=b.y+28;iy<b.y+b.h-10;iy+=28)ctx.fillRect(ix,iy,11,7);
+      ctx.strokeStyle='#bdd9d744';ctx.lineWidth=2;ctx.strokeRect(b.x+4,b.y+4,b.w-8,b.h-8);
+    }
+    for(const t of trees){if(!visible(t.x,t.y,30))continue;ctx.fillStyle='#335e4e';ctx.beginPath();ctx.arc(t.x+3,t.y+4,t.r+4,0,Math.PI*2);ctx.fill();ctx.fillStyle='#59ae81';ctx.beginPath();ctx.arc(t.x,t.y,t.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#91d4a1';ctx.beginPath();ctx.arc(t.x-4,t.y-4,t.r*.4,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle='#e8d79a';for(const p of lamps)if(visible(p.x,p.y,15)){ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()}
+  }
+  function drawGarage(){
+    const g=garage;if(!visible(g.cx,g.y+g.h/2,230))return;
+    ctx.fillStyle='#263e40';round(g.x-10,g.y-10,g.w+20,g.h+22,9);ctx.fill();
+    ctx.fillStyle='#23353c';round(g.x,g.y,g.w,g.h,7);ctx.fill();
+    ctx.fillStyle='#304950';round(g.x+15,g.y+15,g.w-30,g.h-28,5);ctx.fill();
+    // Garagevloer en parkeerstrepen: auto's en spelers blijven zichtbaar in het gebouw.
+    ctx.strokeStyle='#7ae5d3a6';ctx.lineWidth=3;
+    for(const offset of [-39,39]){const x=g.cx+offset;ctx.strokeRect(x-25,g.y+39,50,91)}
+    ctx.setLineDash([8,7]);ctx.strokeStyle='#d1f5d36f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(g.cx,g.y+80);ctx.lineTo(g.cx,g.doorY+54);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#8df5da';ctx.font='bold 14px system-ui';ctx.textAlign='center';ctx.fillText('SAFE GARAGE',g.cx,g.y+29);
+    ctx.fillStyle='#354d53';for(const b of g.walls){round(b.x,b.y,b.w,b.h,2);ctx.fill()}
+    ctx.fillStyle='#53e6ca';ctx.fillRect(g.cx-g.entryHalf,g.doorY-4,g.entryHalf*2,4);
+    ctx.fillStyle='#49dbc5bb';ctx.font='bold 13px system-ui';ctx.fillText('▼ INRIJDEN ▼',g.cx,g.doorY+26);
+    ctx.fillStyle='#1d8574';ctx.fillRect(g.cx-38,g.doorY+31,76,3);
+  }
+  function drawRoads(){ctx.fillStyle='#506e6a';ctx.fillRect(0,0,WORLD,WORLD);
+    const x0=Math.max(0,Math.floor((camera.x-VW/2-HALF-CELL)/CELL)),x1=Math.min(COUNT-1,Math.ceil((camera.x+VW/2+CELL)/CELL));
+    const y0=Math.max(0,Math.floor((camera.y-VH/2-HALF-CELL)/CELL)),y1=Math.min(COUNT-1,Math.ceil((camera.y+VH/2+CELL)/CELL));
+    ctx.fillStyle='#2c3f4b';for(let i=x0;i<=x1;i++){let x=road(i);ctx.fillRect(x-HALF,0,2*HALF,WORLD)}
+    for(let i=y0;i<=y1;i++){let y=road(i);ctx.fillRect(0,y-HALF,WORLD,2*HALF)}
+    ctx.setLineDash([17,24]);ctx.strokeStyle='#d2ba8299';ctx.lineWidth=2;ctx.beginPath();for(let i=x0;i<=x1;i++){ctx.moveTo(road(i),0);ctx.lineTo(road(i),WORLD)}for(let i=y0;i<=y1;i++){ctx.moveTo(0,road(i));ctx.lineTo(WORLD,road(i))}ctx.stroke();ctx.setLineDash([]);
+    for(let i=x0;i<=x1;i++)for(let j=y0;j<=y1;j++)drawJunction(junction(i,j));
+    drawBuildings();drawGarage();
+  }
+  function drawJunction(j){
+    const x=road(j.col),y=road(j.row),s=signal(j);
+    ctx.fillStyle='#e4e8e4aa';
+    for(let n=-4;n<=4;n++){
+      for(const side of [-1,1]){
+        ctx.fillRect(x+n*10-3,y+side*SIDEWALK-5,6,10);
+        ctx.fillRect(x+side*SIDEWALK-5,y+n*10-3,10,6);
+      }
+    }
+    for(let heading=0;heading<4;heading++){
+      const d=headings[heading],axis=d.x?'h':'v';
+      ctx.save();ctx.translate(x,y);ctx.rotate(heading*Math.PI/2);
+      ctx.fillStyle='#e4e8e499';ctx.fillRect(-STOP_LINE,-1,2,47);
+      ctx.fillStyle='#14232b';ctx.fillRect(-84,49,26,12);
+      const colors=['#ff525f','#ffd264','#51f397'];
+      const active=s.green!==axis||j.crossing?0:s.amber?1:2;
+      colors.forEach((color,i)=>{
+        ctx.fillStyle=i===active?color:'#35464b';
+        ctx.beginPath();ctx.arc(-79+i*8,55,2.7,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='#14232b';ctx.fillRect(-58,58,10,10);
+      ctx.fillStyle=s.green==='walk'&&!j.car?'#51f397':'#ff525f';
+      ctx.fillRect(-56,60,6,6);
+      ctx.restore();
+    }
+  }
+  function drawCar(c){if(!visible(c.x,c.y,70))return;const s=carspec[c.type];ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);
+    ctx.fillStyle='#051e2980';round(-s.l/2+3,-s.w/2+4,s.l,s.w,4);ctx.fill();ctx.fillStyle=c.color;round(-s.l/2,-s.w/2,s.l,s.w,5);ctx.fill();
+    ctx.fillStyle='#234452';round(-s.l*.16,-s.w*.40,s.l*.35,s.w*.80,3);ctx.fill();ctx.fillStyle='#b6dbea';ctx.fillRect(s.l*.22,-s.w*.37,s.l*.11,s.w*.74);
+    ctx.fillStyle='#ffecaa';ctx.fillRect(s.l*.43,-s.w*.35,3,5);ctx.fillRect(s.l*.43,s.w*.14,3,5);
+    ctx.fillStyle=c.brake?'#ffbcb6':'#e87986';ctx.fillRect(-s.l*.48,-s.w*.35,3,5);ctx.fillRect(-s.l*.48,s.w*.14,3,5);
+    if(c.type===2){ctx.fillStyle='#ffe173';ctx.fillRect(-5,-4,10,8)}
+    if(c.law){ctx.fillStyle=Math.sin(elapsed*17)>0?'#ee6073':'#4a7ef3';ctx.fillRect(-3,-5,6,5);ctx.fillStyle=Math.sin(elapsed*17)>0?'#4a7ef3':'#ee6073';ctx.fillRect(-3,0,6,5)}
+    const healthRatio=c.hp/c.maxHp;
+    if(healthRatio<.85){
+      ctx.strokeStyle='#132730';ctx.lineWidth=1.4;ctx.beginPath();
+      ctx.moveTo(-s.l*.27,-s.w*.32);ctx.lineTo(-s.l*.13,-s.w*.03);ctx.lineTo(-s.l*.24,s.w*.24);
+      if(healthRatio<.58){ctx.moveTo(s.l*.06,-s.w*.36);ctx.lineTo(-s.l*.08,0);ctx.lineTo(s.l*.07,s.w*.38)}
+      if(healthRatio<.32){ctx.moveTo(-s.l*.45,-s.w*.2);ctx.lineTo(-s.l*.28,-s.w*.04);ctx.lineTo(-s.l*.4,s.w*.25)}
+      ctx.stroke();
+      ctx.fillStyle='#172b32'+(healthRatio<.4?'cc':'88');
+      ctx.fillRect(-s.l*.35,-s.w*.24,healthRatio<.4?10:5,healthRatio<.4?9:5);
+    }
+    if(c.destroyed){ctx.fillStyle='#16242be0';round(-s.l/2,-s.w/2,s.l,s.w,4);ctx.fill();ctx.strokeStyle='#ff744a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-10,-6);ctx.lineTo(11,7);ctx.moveTo(10,-7);ctx.lineTo(-7,8);ctx.stroke()}
+    if(c.occupied){ctx.strokeStyle='#59f5e0';ctx.lineWidth=2;round(-s.l/2-3,-s.w/2-3,s.l+6,s.w+6,6);ctx.stroke()}
+    ctx.restore();
+    if(healthRatio<.5){
+      const smoke=1-healthRatio,phase=Math.sin(elapsed*4+c.x*.02),bx=c.x-Math.cos(c.a)*5,by=c.y-Math.sin(c.a)*5;
+      ctx.fillStyle=c.destroyed?'#262d35b0':'#b1bac575';
+      ctx.beginPath();ctx.arc(bx+phase*4,by-9-(elapsed*17%15),6+smoke*8,0,Math.PI*2);ctx.fill();
+      if(healthRatio<.15&&!c.destroyed){ctx.fillStyle='#ffac58a5';ctx.beginPath();ctx.arc(c.x+Math.cos(c.a)*8,c.y+Math.sin(c.a)*8,3+Math.sin(elapsed*12)*2,0,Math.PI*2);ctx.fill()}
+    }
+  }
+  function drawPerson(p,hero=false){if(!visible(p.x,p.y,30))return;const x=p.x,y=p.y,air=hero?player.jump*.11:0,wave=Math.sin((hero?player.anim:p.phase))*.9;
+    ctx.fillStyle='#05182577';ctx.beginPath();ctx.ellipse(x+3,y+5,8,5,0,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.translate(x,y-air);if(hero)ctx.rotate(player.a-Math.PI/2);
+    ctx.fillStyle=hero?'#4df0d6':p.coat;
+    ctx.beginPath();ctx.ellipse(0,1,7,6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=hero?'#e3bb97':p.skin;ctx.beginPath();ctx.arc(0,-5,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#233c45';ctx.fillRect(-4,5,2,3+wave);ctx.fillRect(3,5,2,3-wave);
+    if(hero){ctx.fillStyle='#26484b';ctx.fillRect(4,-3,6,4)}
+    if(p.panic>0){ctx.strokeStyle='#ffe9a0';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,11+Math.sin(elapsed*10)*1.5,0,Math.PI*2);ctx.stroke()}
+    ctx.restore()}
+  function drawMarker(g){if(!g||!visible(g.x,g.y,150))return;ctx.strokeStyle='#ffd87b';ctx.lineWidth=4;ctx.beginPath();ctx.arc(g.x,g.y,26+Math.sin(elapsed*5)*4,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#ffdd77';ctx.beginPath();ctx.moveTo(g.x,g.y-23);ctx.lineTo(g.x-8,g.y-41);ctx.lineTo(g.x+8,g.y-41);ctx.closePath();ctx.fill()}
+  function drawMap(){const size=Math.min(155,Math.max(110,VW*.13)),x=VW-size-18,y=VH-size-18,scale=size/800;
+    ctx.fillStyle='#071e2ce8';round(x-6,y-6,size+12,size+12,13);ctx.fill();ctx.save();ctx.beginPath();ctx.rect(x,y,size,size);ctx.clip();ctx.fillStyle='#50656b';ctx.fillRect(x,y,size,size);
+    const left=player.x-400,top=player.y-400;for(let i=0;i<COUNT;i++){const r=road(i);ctx.fillStyle='#233f4a';ctx.fillRect(x+(r-HALF-left)*scale,y,2*HALF*scale,size);ctx.fillRect(x,y+(r-HALF-top)*scale,size,2*HALF*scale)}
+    if(job){ctx.fillStyle='#ffe078';ctx.beginPath();ctx.arc(x+(job.goal.x-left)*scale,y+(job.goal.y-top)*scale,5,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle='#54f2cf';ctx.fillRect(x+(garage.cx-left)*scale-4,y+(garage.doorY-48-top)*scale-4,8,8);
+    for(const p of lawCars){ctx.fillStyle='#ff6c8e';ctx.fillRect(x+(p.x-left)*scale-2,y+(p.y-top)*scale-2,4,4)}
+    ctx.fillStyle='#57f3de';ctx.beginPath();ctx.arc(x+size/2,y+size/2,5,0,Math.PI*2);ctx.fill();ctx.restore();ctx.strokeStyle='#76dfd18c';ctx.strokeRect(x,y,size,size)
+  }
+  function render(){ctx.fillStyle='#112a35';ctx.fillRect(0,0,VW,VH);
+    camera.x=clamp(player.x,VW/2,WORLD-VW/2);camera.y=clamp(player.y,VH/2,WORLD-VH/2);
+    ctx.save();ctx.translate(VW/2-camera.x,VH/2-camera.y);drawRoads();
+    for(const p of pickups){if(!p.active||!visible(p.x,p.y,50))continue;ctx.fillStyle='#ffcf6e';ctx.beginPath();ctx.arc(p.x,p.y,7+Math.sin(elapsed*5),0,Math.PI*2);ctx.fill();ctx.fillStyle='#4e3b18';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText('€',p.x,p.y+3)}
+    for(const p of pedestrians)drawPerson(p);
+    for(const c of traffic)drawCar(c);
+    if(!player.car)drawPerson({...player,coat:'#5df0db',skin:'#e5bc94',panic:0},true);
+    if(job)drawMarker(job.goal);
+    for(const shot of shots){
+      ctx.globalAlpha=shot.life/.12;ctx.strokeStyle='#ffe4a1';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(shot.x,shot.y);ctx.lineTo(shot.endX,shot.endY);ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+    for(const e of effects){ctx.strokeStyle=e.color;ctx.globalAlpha=e.life/.5;ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,e.size*(1.8-e.life),0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+    ctx.restore();drawMap();
+    if(job){const dx=job.goal.x-player.x,dy=job.goal.y-player.y;
+      if(len(dx,dy)>Math.min(VW,VH)*.4){const angle=Math.atan2(dy,dx),x=clamp(VW/2+Math.cos(angle)*VW*.30,55,VW-55),y=clamp(VH/2+Math.sin(angle)*VH*.32,175,VH-175);
+        ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle='#ffd67e';ctx.beginPath();ctx.moveTo(13,0);ctx.lineTo(-10,-9);ctx.lineTo(-10,9);ctx.closePath();ctx.fill();ctx.restore()}}
+    if(flash>0){ctx.fillStyle='rgba(255,95,111,'+(flash*.19)+')';ctx.fillRect(0,0,VW,VH)}
+  }
+  function schedule(){const token=loopToken;requestAnimationFrame(now=>step(now,token))}
+  function step(now,token){if(token!==loopToken||!playing||paused)return;const delta=(now-lastFrame)/1000;
+    if(delta<1/fpsCap-.003){requestAnimationFrame(t=>step(t,token));return}
+    lastFrame=now;update(Math.min(.046,delta||.016));render();requestAnimationFrame(t=>step(t,token))
+  }
+  function start(){if(playing){$('intro').classList.add('hidden');return}
+    $('intro').classList.add('hidden');$('pauseLayer').style.display='none';
+    if(!worldLoaded){load();initWorld();createJob();worldLoaded=true}
+    playing=true;paused=false;startAudio();lastFrame=performance.now();loopToken++;schedule();updateHUD();canvas.focus();}
+  let worldLoaded=false;
+  $('startBtn').addEventListener('click',start);
+  $('howBtn').addEventListener('click',()=>{const grid=document.querySelector('.keygrid');grid.classList.toggle('hidden');$('howBtn').textContent=grid.classList.contains('hidden')?'TOETSEN TONEN':'TOETSEN VERBERGEN'});
+  $('resumeBtn').addEventListener('click',()=>pauseGame(false));
+  $('exitBtn').addEventListener('click',quitToMenu);
+  $('resetBtn').addEventListener('click',()=>{if(confirm('Alles wissen en opnieuw beginnen?')){try{localStorage.removeItem(saveKey)}catch(e){}location.reload()}});
+  // Touch blijft beschikbaar als dezelfde GitHub Pages-site op een telefoon wordt geopend.
+  let pointer=null;
+  function joyMove(e){const rect=$('joystick').getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2,m=Math.max(1,len(e.clientX-cx,e.clientY-cy)),d=Math.min(37,m);joy.x=(e.clientX-cx)/m*d/37;joy.y=(e.clientY-cy)/m*d/37;$('thumb').style.transform='translate('+(joy.x*37)+'px,'+(joy.y*37)+'px)'}
+  $('joystick').addEventListener('pointerdown',e=>{e.preventDefault();pointer=e.pointerId;e.currentTarget.setPointerCapture(pointer);joyMove(e)});
+  $('joystick').addEventListener('pointermove',e=>{if(e.pointerId===pointer)joyMove(e)});
+  function endJoy(e){if(e.pointerId!==pointer)return;pointer=null;joy.x=joy.y=0;$('thumb').style.transform='translate(0px,0px)'}
+  $('joystick').addEventListener('pointerup',endJoy);$('joystick').addEventListener('pointercancel',endJoy);
+  $('touchEnter').addEventListener('pointerdown',e=>{e.preventDefault();interaction()});
+  $('touchSpace').addEventListener('pointerdown',e=>{e.preventDefault();touchPress.space=true;if(!player.car)doJump()});
+  $('touchPistol').addEventListener('pointerdown',e=>{e.preventDefault();if(playing&&!paused)selectPistol()});
+  $('touchAttack').addEventListener('pointerdown',e=>{e.preventDefault();touchPress.attack=true;attack()});
+  $('touchTab').addEventListener('pointerdown',e=>{e.preventDefault();horn()});
+  for(const id of ['touchSpace','touchAttack'])for(const kind of ['pointerup','pointercancel','pointerleave'])$(id).addEventListener(kind,()=>{touchPress[id==='touchSpace'?'space':'attack']=false});
+  addEventListener('pagehide',save);addEventListener('beforeunload',save);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing&&!paused)pauseGame(true)});
+  // Beschikbaar voor lokale regressietests, beïnvloedt het spel niet.
+  window.__NEON_TEST__={get state(){return {playing,paused,x:player.x,y:player.y,car:!!player.car,carHp:player.car?.hp??null,peds:pedestrians.length,cars:traffic.length,mission:job?.name,money:player.money,wanted:player.wanted,weapon:weapons[player.weapon].name,fpsCap,radio,garage:{x:garage.x,y:garage.y,doorY:garage.doorY,cx:garage.cx,inside:!!player.car&&insideGarage(player.x,player.y,8)}}}};
+  render();
+})();
+</script>
+</body>
+</html>
